@@ -47,9 +47,24 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Initialize Filter Options
+let filtersInitialized = false;
+
 function initializeFilters() {
+    // Only initialize once
+    if (filtersInitialized) return;
+
     // Brand select
     const brandSelect = document.getElementById('brandSelect');
+    if (!brandSelect) {
+        console.error('brandSelect not found');
+        return;
+    }
+
+    // Clear existing options first (except the first "Any Brand" option)
+    while (brandSelect.options.length > 1) {
+        brandSelect.remove(1);
+    }
+
     BRANDS.forEach(brand => {
         const option = document.createElement('option');
         option.value = brand.id;
@@ -59,51 +74,62 @@ function initializeFilters() {
 
     // Fuel checkboxes
     const fuelContainer = document.getElementById('fuelFilters');
-    FUEL_TYPES.forEach(fuel => {
-        const div = document.createElement('div');
-        div.className = 'checkbox-item';
-        div.innerHTML = `
-            <input type="checkbox" id="fuel_${fuel.id}" value="${fuel.id}">
-            <label for="fuel_${fuel.id}">${fuel.label}</label>
-        `;
-        fuelContainer.appendChild(div);
-    });
+    if (fuelContainer && fuelContainer.children.length === 0) {
+        FUEL_TYPES.forEach(fuel => {
+            const div = document.createElement('div');
+            div.className = 'checkbox-item';
+            div.innerHTML = `
+                <input type="checkbox" id="fuel_${fuel.id}" value="${fuel.id}">
+                <label for="fuel_${fuel.id}">${fuel.label}</label>
+            `;
+            fuelContainer.appendChild(div);
+        });
+    }
 
     // Body type checkboxes
     const bodyContainer = document.getElementById('bodyFilters');
-    BODY_TYPES.forEach(body => {
-        const div = document.createElement('div');
-        div.className = 'checkbox-item';
-        div.innerHTML = `
-            <input type="checkbox" id="body_${body.id}" value="${body.id}">
-            <label for="body_${body.id}">${body.label}</label>
-        `;
-        bodyContainer.appendChild(div);
-    });
+    if (bodyContainer && bodyContainer.children.length === 0) {
+        BODY_TYPES.forEach(body => {
+            const div = document.createElement('div');
+            div.className = 'checkbox-item';
+            div.innerHTML = `
+                <input type="checkbox" id="body_${body.id}" value="${body.id}">
+                <label for="body_${body.id}">${body.label}</label>
+            `;
+            bodyContainer.appendChild(div);
+        });
+    }
 
     // Transmission checkboxes
     const transmissionContainer = document.getElementById('transmissionFilters');
-    TRANSMISSIONS.forEach(trans => {
-        const div = document.createElement('div');
-        div.className = 'checkbox-item';
-        div.innerHTML = `
-            <input type="checkbox" id="trans_${trans.id}" value="${trans.id}">
-            <label for="trans_${trans.id}">${trans.label}</label>
-        `;
-        transmissionContainer.appendChild(div);
-    });
+    if (transmissionContainer && transmissionContainer.children.length === 0) {
+        TRANSMISSIONS.forEach(trans => {
+            const div = document.createElement('div');
+            div.className = 'checkbox-item';
+            div.innerHTML = `
+                <input type="checkbox" id="trans_${trans.id}" value="${trans.id}">
+                <label for="trans_${trans.id}">${trans.label}</label>
+            `;
+            transmissionContainer.appendChild(div);
+        });
+    }
 
     // Advertiser checkboxes
     const advertiserContainer = document.getElementById('advertiserFilters');
-    ADVERTISER_TYPES.forEach(adv => {
-        const div = document.createElement('div');
-        div.className = 'checkbox-item';
-        div.innerHTML = `
-            <input type="checkbox" id="adv_${adv.id}" value="${adv.id}">
-            <label for="adv_${adv.id}">${adv.label}</label>
-        `;
-        advertiserContainer.appendChild(div);
-    });
+    if (advertiserContainer && advertiserContainer.children.length === 0) {
+        ADVERTISER_TYPES.forEach(adv => {
+            const div = document.createElement('div');
+            div.className = 'checkbox-item';
+            div.innerHTML = `
+                <input type="checkbox" id="adv_${adv.id}" value="${adv.id}">
+                <label for="adv_${adv.id}">${adv.label}</label>
+            `;
+            advertiserContainer.appendChild(div);
+        });
+    }
+
+    filtersInitialized = true;
+    console.log('Filters initialized successfully');
 }
 
 // Auth Functions

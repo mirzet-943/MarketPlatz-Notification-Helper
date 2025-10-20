@@ -30,6 +30,7 @@ public class MarktplaatsApiClient
             request.Headers.Add("Accept-Language", "en-US,en;q=0.9");
             request.Headers.Add("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36");
             request.Headers.Add("Referer", "https://www.marktplaats.nl/l/auto-s/");
+            
             request.Headers.Add("sec-ch-ua", "\"Chromium\";v=\"140\", \"Not=A?Brand\";v=\"24\", \"Google Chrome\";v=\"140\"");
             request.Headers.Add("sec-ch-ua-mobile", "?0");
             request.Headers.Add("sec-ch-ua-platform", "\"macOS\"");

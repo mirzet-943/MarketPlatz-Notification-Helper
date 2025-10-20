@@ -380,31 +380,44 @@ async function editJob(id) {
     // Populate filters
     if (job.filters) {
         job.filters.forEach(filter => {
-            if (filter.filterType.toLowerCase() === 'query') {
-                document.getElementById('searchQuery').value = filter.value;
-            } else if (filter.filterType.toLowerCase() === 'l1categoryid') {
-                document.getElementById('l1CategoryId').value = filter.value;
-            } else if (filter.filterType.toLowerCase() === 'l2categoryid') {
-                document.getElementById('brandSelect').value = filter.value;
-            } else if (filter.filterType.toLowerCase() === 'postcode') {
-                document.getElementById('postcode').value = filter.value;
-            } else if (filter.filterType.toLowerCase() === 'attributerange') {
-                const [key, range] = filter.value.split(':');
-                const [min, max] = range.split('|');
-                if (key === 'PrijsVan' || key.includes('Prijs')) {
-                    document.getElementById('minPrice').value = min;
-                    document.getElementById('maxPrice').value = max;
-                } else if (key === 'Bouwjaar') {
-                    document.getElementById('minYear').value = min;
-                    document.getElementById('maxYear').value = max;
-                } else if (key === 'mileage') {
-                    document.getElementById('minMileage').value = min;
-                    document.getElementById('maxMileage').value = max;
+            try {
+                if (filter.filterType.toLowerCase() === 'query') {
+                    const el = document.getElementById('searchQuery');
+                    if (el) el.value = filter.value;
+                } else if (filter.filterType.toLowerCase() === 'l2categoryid') {
+                    const el = document.getElementById('brandSelect');
+                    if (el) el.value = filter.value;
+                } else if (filter.filterType.toLowerCase() === 'postcode') {
+                    const el = document.getElementById('postcode');
+                    if (el) el.value = filter.value;
+                } else if (filter.filterType.toLowerCase() === 'attributerange') {
+                    const [key, range] = filter.value.split(':');
+                    if (range) {
+                        const [min, max] = range.split('|');
+                        if (key === 'PrijsVan' || key.includes('Prijs')) {
+                            const minEl = document.getElementById('minPrice');
+                            const maxEl = document.getElementById('maxPrice');
+                            if (minEl) minEl.value = min;
+                            if (maxEl) maxEl.value = max;
+                        } else if (key === 'Bouwjaar') {
+                            const minEl = document.getElementById('minYear');
+                            const maxEl = document.getElementById('maxYear');
+                            if (minEl) minEl.value = min;
+                            if (maxEl) maxEl.value = max;
+                        } else if (key === 'mileage') {
+                            const minEl = document.getElementById('minMileage');
+                            const maxEl = document.getElementById('maxMileage');
+                            if (minEl) minEl.value = min;
+                            if (maxEl) maxEl.value = max;
+                        }
+                    }
+                } else if (filter.filterType.toLowerCase() === 'attributebyid') {
+                    // Check corresponding checkbox
+                    const checkbox = document.querySelector(`input[type="checkbox"][value="${filter.value}"]`);
+                    if (checkbox) checkbox.checked = true;
                 }
-            } else if (filter.filterType.toLowerCase() === 'attributebyid') {
-                // Check corresponding checkbox
-                const checkbox = document.querySelector(`input[type="checkbox"][value="${filter.value}"]`);
-                if (checkbox) checkbox.checked = true;
+            } catch (error) {
+                console.warn('Error loading filter:', filter, error);
             }
         });
     }

@@ -76,7 +76,39 @@ public class MarktplaatsApiClient
             switch (filter.FilterType.ToLower())
             {
                 case "attributerange":
-                    queryParams.Add($"attributeRanges[]={Uri.EscapeDataString(filter.Value)}");
+                    // Transform our format (key:min|max) to Marktplaats format (key:min:max)
+                    var parts = filter.Value.Split(':');
+                    if (parts.Length == 2)
+                    {
+                        var key = parts[0];
+                        var range = parts[1].Split('|');
+                        if (range.Length == 2)
+                        {
+                            var min = range[0];
+                            var max = range[1];
+
+                            // Transform key names and values to match Marktplaats API
+                            string apiKey = key;
+                            string apiMin = min;
+                            string apiMax = max;
+
+                            if (key.Contains("Prijs") || key == "PrijsVan")
+                            {
+                                // Convert euros to cents
+                                apiKey = "PriceCents";
+                                if (int.TryParse(min, out var minEuros))
+                                    apiMin = (minEuros * 100).ToString();
+                                if (int.TryParse(max, out var maxEuros))
+                                    apiMax = (maxEuros * 100).ToString();
+                            }
+                            else if (key == "Bouwjaar")
+                            {
+                                apiKey = "constructionYear";
+                            }
+
+                            queryParams.Add($"attributeRanges[]={Uri.EscapeDataString($"{apiKey}:{apiMin}:{apiMax}")}");
+                        }
+                    }
                     break;
                 case "attributebyid":
                     queryParams.Add($"attributesById[]={Uri.EscapeDataString(filter.Value)}");

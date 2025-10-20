@@ -255,6 +255,7 @@ function renderJobs() {
                     ${job.isActive ? '✓ Active' : '✗ Inactive'}
                 </span>
             </div>
+            ${renderJobFilters(job.filters)}
             <div class="job-meta">
                 <span>🕐 Created: ${formatDate(job.createdAt)}</span>
                 ${job.lastRunAt ? `<span>⏰ Last check: ${formatDate(job.lastRunAt)}</span>` : ''}
@@ -267,6 +268,59 @@ function renderJobs() {
             </div>
         </div>
     `).join('');
+}
+
+function renderJobFilters(filters) {
+    if (!filters || filters.length === 0) return '';
+
+    const filterTags = [];
+
+    filters.forEach(filter => {
+        const type = filter.filterType.toLowerCase();
+
+        if (type === 'query') {
+            filterTags.push(`🔍 "${escapeHtml(filter.value)}"`);
+        } else if (type === 'l2categoryid') {
+            const brand = BRANDS.find(b => b.id == filter.value);
+            if (brand) filterTags.push(`🚗 ${brand.label}`);
+        } else if (type === 'attributerange') {
+            const [key, range] = filter.value.split(':');
+            if (range) {
+                const [min, max] = range.split('|');
+                if (key.includes('Prijs')) {
+                    filterTags.push(`💰 €${min}-€${max}`);
+                } else if (key === 'Bouwjaar') {
+                    filterTags.push(`📅 ${min}-${max}`);
+                } else if (key === 'mileage') {
+                    filterTags.push(`📏 ${min}-${max}km`);
+                }
+            }
+        } else if (type === 'attributebyid') {
+            const fuel = FUEL_TYPES.find(f => f.id == filter.value);
+            if (fuel) {
+                filterTags.push(`⛽ ${fuel.label}`);
+            } else {
+                const body = BODY_TYPES.find(b => b.id == filter.value);
+                if (body) {
+                    filterTags.push(`🚙 ${body.label}`);
+                } else {
+                    const trans = TRANSMISSIONS.find(t => t.id == filter.value);
+                    if (trans) {
+                        filterTags.push(`⚙️ ${trans.label}`);
+                    } else {
+                        const adv = ADVERTISER_TYPES.find(a => a.id == filter.value);
+                        if (adv) filterTags.push(`👤 ${adv.label}`);
+                    }
+                }
+            }
+        } else if (type === 'postcode') {
+            filterTags.push(`📍 ${filter.value}`);
+        }
+    });
+
+    if (filterTags.length === 0) return '';
+
+    return `<div class="job-filters">${filterTags.join(' ')}</div>`;
 }
 
 function updateJobsCount() {
@@ -582,19 +636,29 @@ function escapeHtml(text) {
 }
 
 function formatDate(dateString) {
+    if (!dateString) return 'Never';
+
+    // Parse the date - assume it's UTC from server
     const date = new Date(dateString);
     const now = new Date();
-    const diff = now - date;
-    const hours = Math.floor(diff / (1000 * 60 * 60));
 
-    if (hours < 1) {
-        const minutes = Math.floor(diff / (1000 * 60));
+    // Calculate difference in milliseconds
+    const diff = now.getTime() - date.getTime();
+    const minutes = Math.floor(diff / (1000 * 60));
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+    if (minutes < 1) {
+        return 'Just now';
+    } else if (minutes < 60) {
         return `${minutes}m ago`;
     } else if (hours < 24) {
         return `${hours}h ago`;
-    } else {
-        const days = Math.floor(hours / 24);
+    } else if (days < 30) {
         return `${days}d ago`;
+    } else {
+        // Show actual date for older items
+        return date.toLocaleDateString();
     }
 }
 

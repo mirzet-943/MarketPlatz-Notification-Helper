@@ -5,6 +5,7 @@ const API_BASE = '/api';
 let currentUser = null;
 let jobs = [];
 let history = [];
+let errorLogs = [];
 let currentTab = 'jobs';
 
 // Filter Data
@@ -262,6 +263,7 @@ function renderJobs() {
                 ${job.lastListingDate ? `<span>📬 Last notification: ${formatDate(job.lastListingDate)}</span>` : ''}
             </div>
             <div class="job-actions">
+                <button class="btn btn-sm btn-primary" onclick="testJob(${job.id})">Test</button>
                 <button class="btn btn-sm btn-secondary" onclick="editJob(${job.id})">Edit</button>
                 <button class="btn btn-sm btn-secondary" onclick="toggleJobStatus(${job.id})">${job.isActive ? 'Deactivate' : 'Activate'}</button>
                 <button class="btn btn-sm btn-danger" onclick="deleteJob(${job.id})">Delete</button>
@@ -397,6 +399,12 @@ function switchTab(tab) {
     // Update tab content
     document.getElementById('jobsTab').style.display = tab === 'jobs' ? 'block' : 'none';
     document.getElementById('historyTab').style.display = tab === 'history' ? 'block' : 'none';
+    document.getElementById('errorsTab').style.display = tab === 'errors' ? 'block' : 'none';
+
+    // Load error logs when switching to errors tab
+    if (tab === 'errors') {
+        loadErrorLogs();
+    }
 }
 
 // Job Modal Functions
@@ -647,26 +655,15 @@ function formatDate(dateString) {
         date = new Date(dateString);
     }
 
-    const now = new Date();
+    // Format as: DD/MM/YYYY HH:MM:SS
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
 
-    // Calculate difference in milliseconds
-    const diff = now.getTime() - date.getTime();
-    const minutes = Math.floor(diff / (1000 * 60));
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-
-    if (minutes < 1) {
-        return 'Just now';
-    } else if (minutes < 60) {
-        return `${minutes}m ago`;
-    } else if (hours < 24) {
-        return `${hours}h ago`;
-    } else if (days < 30) {
-        return `${days}d ago`;
-    } else {
-        // Show actual date for older items
-        return date.toLocaleDateString();
-    }
+    return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
 }
 
 function truncate(text, length) {
@@ -674,10 +671,188 @@ function truncate(text, length) {
     return text.substring(0, length) + '...';
 }
 
+// Test Job Functions
+async function testJob(id) {
+    try {
+        const response = await fetch(`${API_BASE}/monitorjobs/${id}/test`, { method: 'POST' });
+
+        if (!response.ok) {
+            throw new Error('Failed to test search');
+        }
+
+        const result = await response.json();
+        showTestResults(result);
+    } catch (error) {
+        alert('Failed to test search: ' + error.message);
+        console.error('Error testing job:', error);
+    }
+}
+
+function showTestResults(result) {
+    const modal = document.getElementById('testResultsModal');
+    const content = document.getElementById('testResultsContent');
+
+    if (!result.success) {
+        content.innerHTML = `
+            <div style="padding: 20px; text-align: center; color: var(--danger);">
+                <h3>Test Failed</h3>
+                <p>${result.error || 'Unknown error occurred'}</p>
+            </div>
+        `;
+        modal.classList.add('show');
+        return;
+    }
+
+    if (!result.listings || result.listings.length === 0) {
+        content.innerHTML = `
+            <div style="padding: 20px; text-align: center; color: var(--text-secondary);">
+                <h3>No Listings Found</h3>
+                <p>Your search filters didn't match any listings.</p>
+            </div>
+        `;
+        modal.classList.add('show');
+        return;
+    }
+
+    const listingsHtml = result.listings.map(listing => `
+        <div class="history-item">
+            ${listing.imageUrl ?
+                `<img src="${listing.imageUrl}" alt="${escapeHtml(listing.title)}" class="history-image">` :
+                `<div class="history-image-placeholder">🚗</div>`
+            }
+            <div class="history-content">
+                <div class="history-title">
+                    <a href="${listing.url}" target="_blank">${escapeHtml(listing.title)}</a>
+                </div>
+                ${listing.description ? `<div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">${escapeHtml(truncate(listing.description, 100))}</div>` : ''}
+                <div class="history-meta">
+                    <span>📅 ${listing.date}</span>
+                    <span>🆔 ${listing.itemId}</span>
+                </div>
+            </div>
+            ${listing.price ? `<div class="history-price">€${listing.price.toFixed(2)}</div>` : ''}
+        </div>
+    `).join('');
+
+    content.innerHTML = `
+        <div style="padding: 20px;">
+            <div style="margin-bottom: 20px; padding: 15px; background: var(--background); border-radius: 8px;">
+                <h3 style="margin: 0 0 10px 0;">Test Results</h3>
+                <p style="margin: 0; color: var(--text-secondary);">
+                    Found <strong>${result.totalCount}</strong> total listings. Showing first ${result.listings.length}.
+                </p>
+            </div>
+            <div class="history-list">
+                ${listingsHtml}
+            </div>
+        </div>
+    `;
+
+    modal.classList.add('show');
+}
+
+function closeTestResultsModal() {
+    document.getElementById('testResultsModal').classList.remove('show');
+}
+
+// Error Logs Functions
+async function loadErrorLogs() {
+    try {
+        const response = await fetch(`${API_BASE}/errorlogs`);
+        if (!response.ok) throw new Error('Failed to load error logs');
+
+        errorLogs = await response.json();
+        renderErrorLogs();
+    } catch (error) {
+        console.error('Error loading error logs:', error);
+        document.getElementById('errorsList').innerHTML = '<p class="error">Failed to load error logs</p>';
+    }
+}
+
+function renderErrorLogs() {
+    const container = document.getElementById('errorsList');
+
+    if (errorLogs.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 40px;">No error logs found.</p>';
+        return;
+    }
+
+    const tableHtml = `
+        <table class="errors-table">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Source</th>
+                    <th>Message</th>
+                    <th>Job ID</th>
+                    <th>Status Code</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${errorLogs.map(error => `
+                    <tr>
+                        <td>${formatDate(error.timestamp)}</td>
+                        <td>${escapeHtml(error.source || '-')}</td>
+                        <td>
+                            <div style="max-width: 400px; overflow: hidden; text-overflow: ellipsis;">
+                                ${escapeHtml(error.message)}
+                            </div>
+                            ${error.stackTrace ? `
+                                <details style="margin-top: 8px;">
+                                    <summary style="cursor: pointer; color: var(--primary);">Stack Trace</summary>
+                                    <pre style="margin-top: 8px; padding: 10px; background: var(--background); border-radius: 4px; font-size: 11px; overflow-x: auto;">${escapeHtml(error.stackTrace)}</pre>
+                                </details>
+                            ` : ''}
+                        </td>
+                        <td>${error.monitorJobId || '-'}</td>
+                        <td>${error.statusCode || '-'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-danger" onclick="deleteErrorLog(${error.id})">Delete</button>
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+
+    container.innerHTML = tableHtml;
+}
+
+async function deleteErrorLog(id) {
+    try {
+        const response = await fetch(`${API_BASE}/errorlogs/${id}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Failed to delete error log');
+
+        await loadErrorLogs();
+    } catch (error) {
+        alert('Failed to delete error log');
+        console.error('Error deleting error log:', error);
+    }
+}
+
+async function clearAllErrors() {
+    if (!confirm('Are you sure you want to clear all error logs?')) return;
+
+    try {
+        const response = await fetch(`${API_BASE}/errorlogs/clear`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Failed to clear error logs');
+
+        await loadErrorLogs();
+    } catch (error) {
+        alert('Failed to clear error logs');
+        console.error('Error clearing error logs:', error);
+    }
+}
+
 // Close modal on outside click
 window.onclick = function(event) {
-    const modal = document.getElementById('jobModal');
-    if (event.target === modal) {
+    const jobModal = document.getElementById('jobModal');
+    const testModal = document.getElementById('testResultsModal');
+
+    if (event.target === jobModal) {
         closeJobModal();
+    } else if (event.target === testModal) {
+        closeTestResultsModal();
     }
 }

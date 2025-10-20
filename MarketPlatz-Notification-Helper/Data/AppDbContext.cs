@@ -12,6 +12,7 @@ public class AppDbContext : DbContext
     public DbSet<MonitorJob> MonitorJobs { get; set; }
     public DbSet<JobFilter> JobFilters { get; set; }
     public DbSet<ListingLog> ListingLogs { get; set; }
+    public DbSet<ErrorLog> ErrorLogs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -46,6 +47,15 @@ public class AppDbContext : DbContext
                 .HasForeignKey(e => e.MonitorJobId)
                 .OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(e => new { e.MonitorJobId, e.ListingId });
+        });
+
+        modelBuilder.Entity<ErrorLog>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Level).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Message).IsRequired();
+            entity.Property(e => e.Source).HasMaxLength(200);
+            entity.HasIndex(e => e.Timestamp);
         });
     }
 }

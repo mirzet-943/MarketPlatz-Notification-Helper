@@ -51,6 +51,26 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.EnsureCreated();
+
+    // Create ErrorLogs table if it doesn't exist
+    var connection = db.Database.GetDbConnection();
+    connection.Open();
+    using var command = connection.CreateCommand();
+    command.CommandText = @"
+        CREATE TABLE IF NOT EXISTS ErrorLogs (
+            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+            Timestamp TEXT NOT NULL,
+            Level TEXT NOT NULL,
+            Message TEXT NOT NULL,
+            StackTrace TEXT,
+            Source TEXT,
+            MonitorJobId INTEGER,
+            StatusCode INTEGER
+        );
+        CREATE INDEX IF NOT EXISTS IX_ErrorLogs_Timestamp ON ErrorLogs(Timestamp);
+    ";
+    command.ExecuteNonQuery();
+    connection.Close();
 }
 
 // Configure the HTTP request pipeline

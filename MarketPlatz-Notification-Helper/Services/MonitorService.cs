@@ -9,7 +9,7 @@ public class MonitorService : BackgroundService
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<MonitorService> _logger;
     private readonly TimeSpan _checkInterval = TimeSpan.FromMinutes(1);
-    private readonly TimeSpan _maxListingAge = TimeSpan.FromMinutes(1); // Only notify about listings from last 1 minute
+    private readonly TimeSpan _maxListingAge = TimeSpan.FromHours(24); // Only notify about listings from last 24 hours (API already filters to today)
 
     public MonitorService(IServiceProvider serviceProvider, ILogger<MonitorService> logger)
     {
@@ -59,6 +59,7 @@ public class MonitorService : BackgroundService
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error checking job {JobId} - {JobName}", job.Id, job.Name);
+                await LogErrorAsync(dbContext, $"Job check failed: {ex.Message}", "MonitorService", job.Id, ex.StackTrace);
             }
         }
     }
@@ -91,16 +92,28 @@ public class MonitorService : BackgroundService
         var now = DateTime.Now;
         var oldestAllowedDate = now - _maxListingAge;
 
+        _logger.LogInformation("Current time: {Now}, Oldest allowed: {Oldest}", now, oldestAllowedDate);
+
         // Filter out listings we've already seen AND listings that are too old
-        var newListings = searchResponse.Listings
+        var listingsWithDates = searchResponse.Listings
             .Where(l => !notifiedListingIds.Contains(l.ItemId))
             .Select(l => new { Listing = l, ParsedDate = ParseListingDate(l.Date) })
+            .ToList();
+
+        _logger.LogInformation("Sample of listing dates - First 3:");
+        foreach (var item in listingsWithDates.Take(3))
+        {
+            _logger.LogInformation("  Listing {Id}: Date string '{DateStr}' -> Parsed: {Parsed}",
+                item.Listing.ItemId, item.Listing.Date, item.ParsedDate);
+        }
+
+        var newListings = listingsWithDates
             .Where(x => x.ParsedDate >= oldestAllowedDate)
             .Select(x => x.Listing)
             .ToList();
 
-        _logger.LogInformation("Filtered to {Count} listings from last {Minutes} minutes",
-            newListings.Count, _maxListingAge.TotalMinutes);
+        _logger.LogInformation("Filtered to {Count} listings from last {Hours} hours (out of {Total} unseen listings)",
+            newListings.Count, _maxListingAge.TotalHours, listingsWithDates.Count);
 
         // Check if this is the first run (initial setup)
         var isFirstRun = job.LastRunAt == null;
@@ -220,5 +233,28 @@ public class MonitorService : BackgroundService
         }
 
         return DateTime.UtcNow;
+    }
+
+    private async Task LogErrorAsync(AppDbContext dbContext, string message, string source, int? jobId = null, string? stackTrace = null)
+    {
+        try
+        {
+            var errorLog = new ErrorLog
+            {
+                Timestamp = DateTime.UtcNow,
+                Level = "Error",
+                Message = message,
+                StackTrace = stackTrace,
+                Source = source,
+                MonitorJobId = jobId
+            };
+
+            dbContext.ErrorLogs.Add(errorLog);
+            await dbContext.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to log error to database");
+        }
     }
 }

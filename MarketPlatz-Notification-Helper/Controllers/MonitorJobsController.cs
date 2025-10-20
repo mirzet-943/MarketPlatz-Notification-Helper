@@ -1,5 +1,6 @@
 using MarketPlatz_Notification_Helper.Data;
 using MarketPlatz_Notification_Helper.Models;
+using MarketPlatz_Notification_Helper.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,11 +12,13 @@ public class MonitorJobsController : ControllerBase
 {
     private readonly AppDbContext _dbContext;
     private readonly ILogger<MonitorJobsController> _logger;
+    private readonly MarktplaatsApiClient _apiClient;
 
-    public MonitorJobsController(AppDbContext dbContext, ILogger<MonitorJobsController> logger)
+    public MonitorJobsController(AppDbContext dbContext, ILogger<MonitorJobsController> logger, MarktplaatsApiClient apiClient)
     {
         _dbContext = dbContext;
         _logger = logger;
+        _apiClient = apiClient;
     }
 
     [HttpGet]
@@ -235,5 +238,84 @@ public class MonitorJobsController : ControllerBase
         };
 
         return Ok(jobDto);
+    }
+
+    [HttpPost("{id}/test")]
+    public async Task<ActionResult> TestSearch(int id)
+    {
+        var job = await _dbContext.MonitorJobs
+            .Include(j => j.Filters)
+            .FirstOrDefaultAsync(j => j.Id == id);
+
+        if (job == null)
+            return NotFound();
+
+        try
+        {
+            _logger.LogInformation("Testing search for job {JobId} - {JobName}", job.Id, job.Name);
+
+            var searchResponse = await _apiClient.SearchListingsAsync(job.Filters);
+
+            if (searchResponse == null)
+            {
+                // Log error
+                await LogError("API returned null response", "MonitorJobsController.TestSearch", job.Id, null);
+                return Ok(new { success = false, error = "API returned null response", listings = Array.Empty<object>() });
+            }
+
+            if (searchResponse.Listings == null || !searchResponse.Listings.Any())
+            {
+                return Ok(new { success = true, message = "No listings found", listings = Array.Empty<object>(), totalCount = 0 });
+            }
+
+            _logger.LogInformation("Test search successful: {Count} listings found", searchResponse.Listings.Count);
+
+            return Ok(new
+            {
+                success = true,
+                message = $"Found {searchResponse.Listings.Count} listings",
+                totalCount = searchResponse.TotalResultCount,
+                listings = searchResponse.Listings.Take(10).Select(l => new
+                {
+                    itemId = l.ItemId,
+                    title = l.Title,
+                    description = l.Description,
+                    price = l.PriceInfo?.PriceCents / 100.0m,
+                    imageUrl = l.ImageUrls?.FirstOrDefault(),
+                    url = $"https://www.marktplaats.nl{l.VipUrl}",
+                    date = l.Date
+                })
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error testing search for job {JobId}", job.Id);
+            await LogError($"Test search failed: {ex.Message}", "MonitorJobsController.TestSearch", job.Id, null, ex.StackTrace);
+            return Ok(new { success = false, error = ex.Message, listings = Array.Empty<object>() });
+        }
+    }
+
+    private async Task LogError(string message, string source, int? jobId = null, int? statusCode = null, string? stackTrace = null)
+    {
+        try
+        {
+            var errorLog = new ErrorLog
+            {
+                Timestamp = DateTime.UtcNow,
+                Level = "Error",
+                Message = message,
+                StackTrace = stackTrace,
+                Source = source,
+                MonitorJobId = jobId,
+                StatusCode = statusCode
+            };
+
+            _dbContext.ErrorLogs.Add(errorLog);
+            await _dbContext.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to log error to database");
+        }
     }
 }

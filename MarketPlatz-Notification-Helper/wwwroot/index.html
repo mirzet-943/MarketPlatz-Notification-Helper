@@ -68,6 +68,7 @@
             <div class="tabs">
                 <button class="tab-button active" onclick="switchTab('jobs')">Monitor Jobs</button>
                 <button class="tab-button" onclick="switchTab('history')">Notification History</button>
+                <button class="tab-button" onclick="switchTab('errors')">Error Logs</button>
             </div>
 
             <!-- Jobs Tab -->
@@ -88,6 +89,15 @@
                     </select>
                 </div>
                 <div id="historyList" class="history-list"></div>
+            </div>
+
+            <!-- Error Logs Tab -->
+            <div id="errorsTab" class="tab-content" style="display: none;">
+                <div class="section-header">
+                    <h2>Error Logs</h2>
+                    <button class="btn btn-danger" onclick="clearAllErrors()">Clear All Errors</button>
+                </div>
+                <div id="errorsList" class="errors-list"></div>
             </div>
         </div>
     </div>
@@ -224,6 +234,17 @@
                     <button type="submit" class="btn btn-primary">Save Job</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Test Results Modal -->
+    <div id="testResultsModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>Test Search Results</h2>
+                <span class="close" onclick="closeTestResultsModal()">&times;</span>
+            </div>
+            <div id="testResultsContent" class="test-results-content"></div>
         </div>
     </div>
 

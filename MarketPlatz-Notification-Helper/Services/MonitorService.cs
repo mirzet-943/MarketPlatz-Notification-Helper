@@ -102,13 +102,28 @@ public class MonitorService : BackgroundService
         _logger.LogInformation("Filtered to {Count} listings from last {Minutes} minutes",
             newListings.Count, _maxListingAge.TotalMinutes);
 
+        // Check if this is the first run (initial setup)
+        var isFirstRun = job.LastRunAt == null;
+
         if (newListings.Any())
         {
             _logger.LogInformation("Found {Count} new listings for job {JobId} - {JobName}",
                 newListings.Count, job.Id, job.Name);
 
-            // Send email notification
-            await emailService.SendNewListingNotificationAsync(job.EmailTo, job, newListings);
+            // If first run and found many listings (>10), skip email but log them
+            // This prevents spam when setting up a new job
+            var shouldSendEmail = !isFirstRun || newListings.Count <= 10;
+
+            if (shouldSendEmail)
+            {
+                // Send email notification
+                await emailService.SendNewListingNotificationAsync(job.EmailTo, job, newListings);
+                _logger.LogInformation("Email notification sent to {Email}", job.EmailTo);
+            }
+            else
+            {
+                _logger.LogInformation("First run with {Count} listings - skipping email, will notify on next run", newListings.Count);
+            }
 
             // Log the new listings
             foreach (var listing in newListings)

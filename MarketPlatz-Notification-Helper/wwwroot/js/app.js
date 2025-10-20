@@ -638,8 +638,15 @@ function escapeHtml(text) {
 function formatDate(dateString) {
     if (!dateString) return 'Never';
 
-    // Parse the date - assume it's UTC from server
-    const date = new Date(dateString);
+    // Parse the date - if no timezone info, treat as UTC
+    let date;
+    if (!dateString.includes('Z') && !dateString.includes('+')) {
+        // Add 'Z' to indicate UTC if not present
+        date = new Date(dateString + 'Z');
+    } else {
+        date = new Date(dateString);
+    }
+
     const now = new Date();
 
     // Calculate difference in milliseconds

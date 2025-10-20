@@ -651,9 +651,6 @@ function buildFilters() {
         filters.push({ filterType: 'attributeById', key: '', value: cb.value });
     });
 
-    // Default required filters
-    filters.push({ filterType: 'attributeById', key: 'offeredSince', value: '0' });
-
     return filters;
 }
 

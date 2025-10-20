@@ -163,7 +163,6 @@ const FILTER_CONFIG = {
 
 // Default required filters
 const DEFAULT_FILTERS = [
-    { filterType: 'AttributeById', key: 'offeredSince', value: '0' }, // Required
     { filterType: 'AttributeByKey', key: 'offeredSince', value: 'offeredSince:Vandaag' }, // Always
     { filterType: 'L1CategoryId', key: 'l1CategoryId', value: '91' } // Cars category
 ];

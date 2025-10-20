@@ -92,28 +92,16 @@ public class MonitorService : BackgroundService
         var now = DateTime.Now;
         var oldestAllowedDate = now - _maxListingAge;
 
-        _logger.LogInformation("Current time: {Now}, Oldest allowed: {Oldest}", now, oldestAllowedDate);
-
         // Filter out listings we've already seen AND listings that are too old
-        var listingsWithDates = searchResponse.Listings
+        var newListings = searchResponse.Listings
             .Where(l => !notifiedListingIds.Contains(l.ItemId))
             .Select(l => new { Listing = l, ParsedDate = ParseListingDate(l.Date) })
-            .ToList();
-
-        _logger.LogInformation("Sample of listing dates - First 3:");
-        foreach (var item in listingsWithDates.Take(3))
-        {
-            _logger.LogInformation("  Listing {Id}: Date string '{DateStr}' -> Parsed: {Parsed}",
-                item.Listing.ItemId, item.Listing.Date, item.ParsedDate);
-        }
-
-        var newListings = listingsWithDates
             .Where(x => x.ParsedDate >= oldestAllowedDate)
             .Select(x => x.Listing)
             .ToList();
 
-        _logger.LogInformation("Filtered to {Count} listings from last {Hours} hours (out of {Total} unseen listings)",
-            newListings.Count, _maxListingAge.TotalHours, listingsWithDates.Count);
+        _logger.LogInformation("Found {Count} new listings from last {Hours} hours",
+            newListings.Count, _maxListingAge.TotalHours);
 
         // Check if this is the first run (initial setup)
         var isFirstRun = job.LastRunAt == null;

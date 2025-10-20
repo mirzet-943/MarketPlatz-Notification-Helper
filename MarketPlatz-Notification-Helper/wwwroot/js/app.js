@@ -276,15 +276,28 @@ function renderJobFilters(filters) {
     if (!filters || filters.length === 0) return '';
 
     const filterTags = [];
+    const SUBCATEGORIES = {
+        '149': 'SchadeAuto\'s',
+    };
 
     filters.forEach(filter => {
         const type = filter.filterType.toLowerCase();
 
         if (type === 'query') {
             filterTags.push(`🔍 "${escapeHtml(filter.value)}"`);
+        } else if (type === 'l1categoryid') {
+            if (filter.value === '48') {
+                filterTags.push(`📂 Auto diversen`);
+            }
         } else if (type === 'l2categoryid') {
-            const brand = BRANDS.find(b => b.id == filter.value);
-            if (brand) filterTags.push(`🚗 ${brand.label}`);
+            // Check if it's a subcategory or brand
+            const subcategory = SUBCATEGORIES[filter.value];
+            if (subcategory) {
+                filterTags.push(`🔧 ${subcategory}`);
+            } else {
+                const brand = BRANDS.find(b => b.id == filter.value);
+                if (brand) filterTags.push(`🚗 ${brand.label}`);
+            }
         } else if (type === 'attributerange') {
             const [key, range] = filter.value.split(':');
             if (range) {
@@ -386,6 +399,19 @@ function populateJobFilter() {
     select.value = currentValue;
 }
 
+// Category handling
+function handleCategoryChange() {
+    const category = document.getElementById('categorySelect').value;
+    const subcategoryGroup = document.getElementById('subcategoryGroup');
+
+    if (category === '48') {
+        subcategoryGroup.style.display = 'block';
+    } else {
+        subcategoryGroup.style.display = 'none';
+        document.getElementById('subcategorySelect').value = '';
+    }
+}
+
 // Tab Functions
 function switchTab(tab) {
     currentTab = tab;
@@ -446,9 +472,22 @@ async function editJob(id) {
                 if (filter.filterType.toLowerCase() === 'query') {
                     const el = document.getElementById('searchQuery');
                     if (el) el.value = filter.value;
+                } else if (filter.filterType.toLowerCase() === 'l1categoryid') {
+                    const el = document.getElementById('categorySelect');
+                    if (el) {
+                        el.value = filter.value;
+                        handleCategoryChange(); // Show/hide subcategory
+                    }
                 } else if (filter.filterType.toLowerCase() === 'l2categoryid') {
-                    const el = document.getElementById('brandSelect');
-                    if (el) el.value = filter.value;
+                    // Check if it's a subcategory for Auto diversen or a brand for regular cars
+                    const category = document.getElementById('categorySelect').value;
+                    if (category === '48') {
+                        const el = document.getElementById('subcategorySelect');
+                        if (el) el.value = filter.value;
+                    } else {
+                        const el = document.getElementById('brandSelect');
+                        if (el) el.value = filter.value;
+                    }
                 } else if (filter.filterType.toLowerCase() === 'postcode') {
                     const el = document.getElementById('postcode');
                     if (el) el.value = filter.value;
@@ -535,14 +574,23 @@ function buildFilters() {
         filters.push({ filterType: 'query', key: '', value: query });
     }
 
-    // Brand
-    const brand = document.getElementById('brandSelect').value;
-    if (brand) {
-        filters.push({ filterType: 'l2CategoryId', key: '', value: brand });
-    }
+    // Category
+    const category = document.getElementById('categorySelect').value;
+    filters.push({ filterType: 'l1CategoryId', key: '', value: category });
 
-    // Category (always Cars)
-    filters.push({ filterType: 'l1CategoryId', key: '', value: '91' });
+    // Subcategory (for Auto diversen)
+    if (category === '48') {
+        const subcategory = document.getElementById('subcategorySelect').value;
+        if (subcategory) {
+            filters.push({ filterType: 'l2CategoryId', key: '', value: subcategory });
+        }
+    } else {
+        // Brand (only for regular cars category)
+        const brand = document.getElementById('brandSelect').value;
+        if (brand) {
+            filters.push({ filterType: 'l2CategoryId', key: '', value: brand });
+        }
+    }
 
     // Postcode
     const postcode = document.getElementById('postcode').value.trim();
@@ -604,7 +652,6 @@ function buildFilters() {
     });
 
     // Default required filters
-    filters.push({ filterType: 'attributeById', key: 'priceType', value: '10882' }); // Te koop
     filters.push({ filterType: 'attributeById', key: 'offeredSince', value: '0' });
 
     return filters;

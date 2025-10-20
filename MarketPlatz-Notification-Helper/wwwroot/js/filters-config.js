@@ -163,8 +163,7 @@ const FILTER_CONFIG = {
 
 // Default required filters
 const DEFAULT_FILTERS = [
-    { filterType: 'AttributeById', key: 'priceType', value: '10882' }, // Te koop (For Sale)
     { filterType: 'AttributeById', key: 'offeredSince', value: '0' }, // Required
-    { filterType: 'AttributeByKey', key: 'offeredSince', value: 'offeredSince:Altijd' }, // Always
+    { filterType: 'AttributeByKey', key: 'offeredSince', value: 'offeredSince:Vandaag' }, // Always
     { filterType: 'L1CategoryId', key: 'l1CategoryId', value: '91' } // Cars category
 ];

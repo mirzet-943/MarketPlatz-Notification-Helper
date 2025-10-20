@@ -1,4 +1,5 @@
 ﻿using MarketPlatz_Notification_Helper.Data;
+using MarketPlatz_Notification_Helper.Middleware;
 using MarketPlatz_Notification_Helper.Services;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,6 +9,15 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// Add Session support
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromHours(24);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
 
 // Add CORS
 builder.Services.AddCors(options =>
@@ -51,6 +61,10 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AllowAll");
+
+app.UseSession();
+
+app.UseMiddleware<AuthMiddleware>();
 
 app.UseStaticFiles();
 

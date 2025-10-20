@@ -83,6 +83,13 @@ public class MonitorJobsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<MonitorJobDto>> Create([FromBody] MonitorJobDto jobDto)
     {
+        // Check if maximum number of jobs (5) has been reached
+        var jobCount = await _dbContext.MonitorJobs.CountAsync();
+        if (jobCount >= 5)
+        {
+            return BadRequest(new { error = "Maximum number of jobs (5) has been reached. Please delete an existing job first." });
+        }
+
         var job = new MonitorJob
         {
             Name = jobDto.Name,

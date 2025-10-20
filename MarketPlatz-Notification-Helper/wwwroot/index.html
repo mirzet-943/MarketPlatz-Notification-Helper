@@ -3,64 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Marktplaats Notification Helper</title>
-    <link rel="stylesheet" href="/css/style.css">
+    <title>Marktplaats Monitor</title>
+    <link rel="stylesheet" href="/css/style-new.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Marktplaats Car Notification Helper</h1>
-            <p class="subtitle">Monitor new car listings and get email notifications</p>
-        </header>
-
-        <div class="stats-section" id="statsSection">
-            <div class="stat-card">
-                <h3 id="totalListings">0</h3>
-                <p>Total Listings Found</p>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-container">
+        <div class="login-box">
+            <div class="login-header">
+                <h1>🚗 Marktplaats Monitor</h1>
+                <p>Login to manage your car listing notifications</p>
             </div>
-            <div class="stat-card">
-                <h3 id="last24Hours">0</h3>
-                <p>Last 24 Hours</p>
-            </div>
-            <div class="stat-card">
-                <h3 id="activeJobs">0</h3>
-                <p>Active Jobs</p>
-            </div>
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" required placeholder="admin">
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" required placeholder="Enter password">
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Login</button>
+                <div id="loginError" class="error-message" style="display: none;"></div>
+            </form>
         </div>
+    </div>
 
-        <div class="main-content">
-            <div class="section">
+    <!-- Main Dashboard -->
+    <div id="dashboard" style="display: none;">
+        <nav class="top-nav">
+            <div class="nav-brand">🚗 Marktplaats Monitor</div>
+            <div class="nav-actions">
+                <button class="btn btn-sm btn-ghost" onclick="logout()">Logout</button>
+            </div>
+        </nav>
+
+        <div class="dashboard-container">
+            <!-- Stats Cards -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">📊</div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="totalListings">0</div>
+                        <div class="stat-label">Total Notifications</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">⏰</div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="last24Hours">0</div>
+                        <div class="stat-label">Last 24 Hours</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="activeJobs">0 / 5</div>
+                        <div class="stat-label">Active Jobs</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Navigation -->
+            <div class="tabs">
+                <button class="tab-button active" onclick="switchTab('jobs')">Monitor Jobs</button>
+                <button class="tab-button" onclick="switchTab('history')">Notification History</button>
+            </div>
+
+            <!-- Jobs Tab -->
+            <div id="jobsTab" class="tab-content active">
                 <div class="section-header">
-                    <h2>Monitor Jobs</h2>
+                    <h2>Your Monitor Jobs</h2>
                     <button class="btn btn-primary" onclick="showAddJobModal()">+ Add New Job</button>
                 </div>
-
-                <div id="jobsList" class="jobs-list">
-                    <p class="loading">Loading jobs...</p>
-                </div>
+                <div id="jobsList" class="jobs-grid"></div>
             </div>
 
-            <div class="section">
-                <h2>Recent Listings</h2>
-                <div id="listingLogs" class="logs-list">
-                    <p class="loading">Loading listings...</p>
+            <!-- History Tab -->
+            <div id="historyTab" class="tab-content" style="display: none;">
+                <div class="section-header">
+                    <h2>Notification History</h2>
+                    <select id="historyJobFilter" onchange="loadHistory()" class="filter-select">
+                        <option value="">All Jobs</option>
+                    </select>
                 </div>
+                <div id="historyList" class="history-list"></div>
             </div>
         </div>
     </div>
 
     <!-- Add/Edit Job Modal -->
     <div id="jobModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeJobModal()">&times;</span>
-            <h2 id="modalTitle">Add New Job</h2>
+        <div class="modal-content modal-medium">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add New Job</h2>
+                <span class="close" onclick="closeJobModal()">&times;</span>
+            </div>
 
             <form id="jobForm" onsubmit="saveJob(event)">
                 <input type="hidden" id="jobId">
 
                 <div class="form-group">
                     <label for="jobName">Job Name *</label>
-                    <input type="text" id="jobName" required placeholder="e.g., Volkswagen Golf Monitor">
+                    <input type="text" id="jobName" required placeholder="e.g., VW Golf Monitor">
                 </div>
 
                 <div class="form-group">
@@ -68,28 +113,51 @@
                     <input type="email" id="emailTo" required placeholder="your@email.com">
                 </div>
 
-                <div class="form-group">
+                <div class="form-group checkbox-group">
                     <label>
                         <input type="checkbox" id="isActive" checked>
-                        Active
+                        <span>Active</span>
                     </label>
                 </div>
 
-                <h3>Filters</h3>
-
-                <div class="filter-tabs">
-                    <button type="button" class="tab-btn active" onclick="switchFilterTab('quick')">Quick Filters</button>
-                    <button type="button" class="tab-btn" onclick="switchFilterTab('advanced')">Advanced Filters</button>
+                <div class="form-group">
+                    <label>Search Query</label>
+                    <input type="text" id="searchQuery" placeholder="e.g., volkswagen golf">
+                    <small>Search in title and description</small>
                 </div>
 
-                <div id="quickFiltersContainer" class="filter-tab-content active">
-                    <!-- Quick filters will be populated by JavaScript -->
-                </div>
-
-                <div id="advancedFiltersContainer" class="filter-tab-content" style="display: none;">
-                    <div id="filtersContainer"></div>
-                    <button type="button" class="btn btn-secondary" onclick="addFilter()">+ Add Custom Filter</button>
-                </div>
+                <details class="advanced-filters">
+                    <summary>Advanced Filters</summary>
+                    <div class="filters-grid">
+                        <div class="form-group">
+                            <label>Category</label>
+                            <select id="l1CategoryId">
+                                <option value="">Any</option>
+                                <option value="91">Cars</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Min Year</label>
+                            <input type="number" id="minYear" placeholder="e.g., 2015">
+                        </div>
+                        <div class="form-group">
+                            <label>Max Year</label>
+                            <input type="number" id="maxYear" placeholder="e.g., 2023">
+                        </div>
+                        <div class="form-group">
+                            <label>Min Price (€)</label>
+                            <input type="number" id="minPrice" placeholder="e.g., 5000">
+                        </div>
+                        <div class="form-group">
+                            <label>Max Price (€)</label>
+                            <input type="number" id="maxPrice" placeholder="e.g., 15000">
+                        </div>
+                        <div class="form-group">
+                            <label>Postal Code</label>
+                            <input type="text" id="postcode" placeholder="e.g., 1000">
+                        </div>
+                    </div>
+                </details>
 
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeJobModal()">Cancel</button>
@@ -99,7 +167,6 @@
         </div>
     </div>
 
-    <script src="/js/filters-config.js"></script>
-    <script src="/js/app-enhanced.js"></script>
+    <script src="/js/app-new.js"></script>
 </body>
 </html>

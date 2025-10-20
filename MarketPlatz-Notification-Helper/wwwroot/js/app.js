@@ -1,336 +1,414 @@
+// API URLs
 const API_BASE = '/api';
-let currentJobId = null;
 
-// Initialize app
+// State
+let currentUser = null;
+let jobs = [];
+let history = [];
+let currentTab = 'jobs';
+
+// Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
-    loadStats();
-    loadJobs();
-    loadLogs();
-
-    // Refresh data every 30 seconds
-    setInterval(() => {
-        loadStats();
-        loadJobs();
-        loadLogs();
-    }, 30000);
+    checkAuthStatus();
 });
 
-// Load statistics
+// Auth Functions
+async function checkAuthStatus() {
+    try {
+        const response = await fetch(`${API_BASE}/auth/status`);
+        const data = await response.json();
+
+        if (data.isAuthenticated) {
+            showDashboard();
+            loadDashboardData();
+        } else {
+            showLogin();
+        }
+    } catch (error) {
+        console.error('Auth check failed:', error);
+        showLogin();
+    }
+}
+
+async function handleLogin(event) {
+    event.preventDefault();
+
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const errorDiv = document.getElementById('loginError');
+
+    try {
+        const response = await fetch(`${API_BASE}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+            showDashboard();
+            loadDashboardData();
+        } else {
+            errorDiv.textContent = data.message || 'Invalid credentials';
+            errorDiv.style.display = 'block';
+        }
+    } catch (error) {
+        errorDiv.textContent = 'Login failed. Please try again.';
+        errorDiv.style.display = 'block';
+    }
+}
+
+async function logout() {
+    try {
+        await fetch(`${API_BASE}/auth/logout`, { method: 'POST' });
+        showLogin();
+    } catch (error) {
+        console.error('Logout failed:', error);
+    }
+}
+
+function showLogin() {
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('dashboard').style.display = 'none';
+}
+
+function showDashboard() {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+}
+
+// Dashboard Data Functions
+async function loadDashboardData() {
+    await Promise.all([
+        loadStats(),
+        loadJobs(),
+        loadHistory()
+    ]);
+}
+
 async function loadStats() {
     try {
-        const [logsResponse, jobsResponse] = await Promise.all([
-            fetch(`${API_BASE}/listinglogs/stats`),
-            fetch(`${API_BASE}/monitorjobs`)
-        ]);
+        const response = await fetch(`${API_BASE}/listinglogs/stats`);
+        if (!response.ok) throw new Error('Failed to load stats');
 
-        const stats = await logsResponse.json();
-        const jobs = await jobsResponse.json();
+        const data = await response.json();
 
-        document.getElementById('totalListings').textContent = stats.totalListings || 0;
-        document.getElementById('last24Hours').textContent = stats.last24Hours || 0;
-        document.getElementById('activeJobs').textContent = jobs.filter(j => j.isActive).length;
+        document.getElementById('totalListings').textContent = data.totalListings || 0;
+        document.getElementById('last24Hours').textContent = data.last24Hours || 0;
     } catch (error) {
         console.error('Error loading stats:', error);
     }
 }
 
-// Load all jobs
 async function loadJobs() {
     try {
         const response = await fetch(`${API_BASE}/monitorjobs`);
-        const jobs = await response.json();
+        if (!response.ok) throw new Error('Failed to load jobs');
 
-        const jobsList = document.getElementById('jobsList');
-
-        if (jobs.length === 0) {
-            jobsList.innerHTML = '<p class="loading">No monitor jobs yet. Click "Add New Job" to create one.</p>';
-            return;
-        }
-
-        jobsList.innerHTML = jobs.map(job => `
-            <div class="job-card">
-                <div class="job-header">
-                    <h3 class="job-title">${escapeHtml(job.name)}</h3>
-                    <span class="job-status ${job.isActive ? 'active' : 'inactive'}">
-                        ${job.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                </div>
-
-                <div class="job-info">
-                    <p><strong>Email:</strong> ${escapeHtml(job.emailTo)}</p>
-                    <p><strong>Last Run:</strong> ${formatDate(job.lastRunAt)}</p>
-                    ${job.lastListingDate ? `<p><strong>Last Listing:</strong> ${formatDate(job.lastListingDate)}</p>` : ''}
-                </div>
-
-                ${job.filters && job.filters.length > 0 ? `
-                    <div class="job-filters">
-                        <strong>Filters:</strong><br>
-                        ${job.filters.map(f => `
-                            <span class="filter-tag">${escapeHtml(f.filterType)}: ${escapeHtml(f.value)}</span>
-                        `).join('')}
-                    </div>
-                ` : ''}
-
-                <div class="job-actions">
-                    <button class="btn btn-secondary btn-small" onclick="editJob(${job.id})">Edit</button>
-                    <button class="btn ${job.isActive ? 'btn-secondary' : 'btn-primary'} btn-small"
-                            onclick="toggleJob(${job.id})">
-                        ${job.isActive ? 'Deactivate' : 'Activate'}
-                    </button>
-                    <button class="btn btn-danger btn-small" onclick="deleteJob(${job.id}, '${escapeHtml(job.name)}')">Delete</button>
-                </div>
-            </div>
-        `).join('');
+        jobs = await response.json();
+        renderJobs();
+        updateJobsCount();
     } catch (error) {
         console.error('Error loading jobs:', error);
-        document.getElementById('jobsList').innerHTML = '<p class="loading">Error loading jobs. Please refresh.</p>';
+        document.getElementById('jobsList').innerHTML = '<p class="error">Failed to load jobs</p>';
     }
 }
 
-// Load recent logs
-async function loadLogs() {
+function renderJobs() {
+    const container = document.getElementById('jobsList');
+
+    if (jobs.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 40px;">No monitor jobs yet. Click "Add New Job" to get started!</p>';
+        return;
+    }
+
+    container.innerHTML = jobs.map(job => `
+        <div class="job-card">
+            <div class="job-card-header">
+                <div>
+                    <div class="job-title">${escapeHtml(job.name)}</div>
+                    <div class="job-email">📧 ${escapeHtml(job.emailTo)}</div>
+                </div>
+                <span class="job-status ${job.isActive ? 'active' : 'inactive'}">
+                    ${job.isActive ? '✓ Active' : '✗ Inactive'}
+                </span>
+            </div>
+            <div class="job-meta">
+                <span>🕐 Created: ${formatDate(job.createdAt)}</span>
+                ${job.lastRunAt ? `<span>⏰ Last check: ${formatDate(job.lastRunAt)}</span>` : ''}
+                ${job.lastListingDate ? `<span>📬 Last notification: ${formatDate(job.lastListingDate)}</span>` : ''}
+            </div>
+            <div class="job-actions">
+                <button class="btn btn-sm btn-secondary" onclick="editJob(${job.id})">Edit</button>
+                <button class="btn btn-sm btn-secondary" onclick="toggleJobStatus(${job.id})">${job.isActive ? 'Deactivate' : 'Activate'}</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteJob(${job.id})">Delete</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function updateJobsCount() {
+    const activeCount = jobs.filter(j => j.isActive).length;
+    document.getElementById('activeJobs').textContent = `${activeCount} / 5`;
+}
+
+async function loadHistory() {
     try {
-        const response = await fetch(`${API_BASE}/listinglogs?limit=50`);
-        const logs = await response.json();
+        const jobFilter = document.getElementById('historyJobFilter')?.value || '';
+        const url = jobFilter ? `${API_BASE}/listinglogs?jobId=${jobFilter}&limit=50` : `${API_BASE}/listinglogs?limit=50`;
 
-        const logsList = document.getElementById('listingLogs');
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Failed to load history');
 
-        if (logs.length === 0) {
-            logsList.innerHTML = '<p class="loading">No listings found yet.</p>';
-            return;
-        }
+        history = await response.json();
+        renderHistory();
+        populateJobFilter();
+    } catch (error) {
+        console.error('Error loading history:', error);
+        document.getElementById('historyList').innerHTML = '<p class="error">Failed to load history</p>';
+    }
+}
 
-        logsList.innerHTML = logs.map(log => `
-            <div class="log-card">
-                <div class="log-title">${escapeHtml(log.title)}</div>
-                <div class="log-details">
-                    ${log.price ? `<p><strong>Price:</strong> €${log.price.toFixed(2)}</p>` : ''}
-                    <p><strong>Notified:</strong> ${formatDate(log.notifiedAt)}</p>
-                    ${log.url ? `<p><a href="${escapeHtml(log.url)}" target="_blank">View Listing →</a></p>` : ''}
+function renderHistory() {
+    const container = document.getElementById('historyList');
+
+    if (history.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 40px;">No notifications sent yet.</p>';
+        return;
+    }
+
+    container.innerHTML = history.map(item => `
+        <div class="history-item">
+            ${item.imageUrl ?
+                `<img src="${item.imageUrl}" alt="${escapeHtml(item.title)}" class="history-image">` :
+                `<div class="history-image-placeholder">🚗</div>`
+            }
+            <div class="history-content">
+                <div class="history-title">
+                    <a href="${item.url}" target="_blank">${escapeHtml(item.title)}</a>
+                </div>
+                ${item.description ? `<div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">${escapeHtml(truncate(item.description, 100))}</div>` : ''}
+                <div class="history-meta">
+                    <span>📅 ${formatDate(item.notifiedAt)}</span>
+                    <span>🆔 ${item.listingId}</span>
                 </div>
             </div>
-        `).join('');
-    } catch (error) {
-        console.error('Error loading logs:', error);
-        document.getElementById('listingLogs').innerHTML = '<p class="loading">Error loading listings. Please refresh.</p>';
-    }
+            ${item.price ? `<div class="history-price">€${item.price.toFixed(2)}</div>` : ''}
+        </div>
+    `).join('');
 }
 
-// Show add job modal
+function populateJobFilter() {
+    const select = document.getElementById('historyJobFilter');
+    if (!select || jobs.length === 0) return;
+
+    const currentValue = select.value;
+    select.innerHTML = '<option value="">All Jobs</option>' +
+        jobs.map(job => `<option value="${job.id}">${escapeHtml(job.name)}</option>`).join('');
+    select.value = currentValue;
+}
+
+// Tab Functions
+function switchTab(tab) {
+    currentTab = tab;
+
+    // Update tab buttons
+    document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+
+    // Update tab content
+    document.getElementById('jobsTab').style.display = tab === 'jobs' ? 'block' : 'none';
+    document.getElementById('historyTab').style.display = tab === 'history' ? 'block' : 'none';
+}
+
+// Job Modal Functions
 function showAddJobModal() {
-    currentJobId = null;
+    if (jobs.length >= 5) {
+        alert('Maximum number of jobs (5) reached. Please delete a job first.');
+        return;
+    }
+
     document.getElementById('modalTitle').textContent = 'Add New Job';
     document.getElementById('jobForm').reset();
     document.getElementById('jobId').value = '';
     document.getElementById('isActive').checked = true;
-    document.getElementById('filtersContainer').innerHTML = '';
-    addFilter(); // Add one empty filter by default
-    document.getElementById('jobModal').style.display = 'block';
+    document.getElementById('jobModal').classList.add('show');
 }
 
-// Edit existing job
-async function editJob(jobId) {
-    try {
-        const response = await fetch(`${API_BASE}/monitorjobs/${jobId}`);
-        const job = await response.json();
+async function editJob(id) {
+    const job = jobs.find(j => j.id === id);
+    if (!job) return;
 
-        currentJobId = jobId;
-        document.getElementById('modalTitle').textContent = 'Edit Job';
-        document.getElementById('jobId').value = job.id;
-        document.getElementById('jobName').value = job.name;
-        document.getElementById('emailTo').value = job.emailTo;
-        document.getElementById('isActive').checked = job.isActive;
+    document.getElementById('modalTitle').textContent = 'Edit Job';
+    document.getElementById('jobId').value = job.id;
+    document.getElementById('jobName').value = job.name;
+    document.getElementById('emailTo').value = job.emailTo;
+    document.getElementById('isActive').checked = job.isActive;
 
-        const filtersContainer = document.getElementById('filtersContainer');
-        filtersContainer.innerHTML = '';
-
-        if (job.filters && job.filters.length > 0) {
-            job.filters.forEach(filter => {
-                addFilter(filter.filterType, filter.key, filter.value);
-            });
-        } else {
-            addFilter();
-        }
-
-        document.getElementById('jobModal').style.display = 'block';
-    } catch (error) {
-        console.error('Error loading job:', error);
-        alert('Error loading job details');
+    // Populate filters
+    if (job.filters) {
+        job.filters.forEach(filter => {
+            if (filter.filterType === 'query') {
+                document.getElementById('searchQuery').value = filter.value;
+            } else if (filter.filterType === 'l1CategoryId') {
+                document.getElementById('l1CategoryId').value = filter.value;
+            } else if (filter.filterType === 'postcode') {
+                document.getElementById('postcode').value = filter.value;
+            } else if (filter.filterType === 'attributeRange') {
+                const [key, range] = filter.value.split(':');
+                if (key === 'PrijsVan') document.getElementById('minPrice').value = range.split('|')[0];
+                if (key === 'PrijsTot') document.getElementById('maxPrice').value = range.split('|')[1];
+                if (key === 'Bouwjaar') {
+                    const [min, max] = range.split('|');
+                    document.getElementById('minYear').value = min;
+                    document.getElementById('maxYear').value = max;
+                }
+            }
+        });
     }
+
+    document.getElementById('jobModal').classList.add('show');
 }
 
-// Close modal
 function closeJobModal() {
-    document.getElementById('jobModal').style.display = 'none';
-    currentJobId = null;
+    document.getElementById('jobModal').classList.remove('show');
 }
 
-// Add filter row
-function addFilter(filterType = '', key = '', value = '') {
-    const filtersContainer = document.getElementById('filtersContainer');
-    const filterIndex = filtersContainer.children.length;
-
-    const filterRow = document.createElement('div');
-    filterRow.className = 'filter-row';
-    filterRow.innerHTML = `
-        <div class="form-group">
-            <label>Filter Type</label>
-            <select class="filter-type" data-index="${filterIndex}">
-                <option value="AttributeRange" ${filterType === 'AttributeRange' ? 'selected' : ''}>Price Range</option>
-                <option value="AttributeById" ${filterType === 'AttributeById' ? 'selected' : ''}>Attribute By ID</option>
-                <option value="AttributeByKey" ${filterType === 'AttributeByKey' ? 'selected' : ''}>Attribute By Key</option>
-                <option value="L1CategoryId" ${filterType === 'L1CategoryId' ? 'selected' : ''}>L1 Category ID</option>
-                <option value="L2CategoryId" ${filterType === 'L2CategoryId' ? 'selected' : ''}>L2 Category ID</option>
-                <option value="Postcode" ${filterType === 'Postcode' ? 'selected' : ''}>Postcode</option>
-                <option value="Query" ${filterType === 'Query' ? 'selected' : ''}>Search Query</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label>Key (optional)</label>
-            <input type="text" class="filter-key" value="${escapeHtml(key)}" placeholder="e.g., PriceCents">
-        </div>
-        <div class="form-group">
-            <label>Value</label>
-            <input type="text" class="filter-value" value="${escapeHtml(value)}" placeholder="e.g., 400000:1400000" required>
-        </div>
-        <button type="button" class="btn btn-danger btn-small" onclick="removeFilter(this)" style="margin-top: 24px;">Remove</button>
-    `;
-
-    filtersContainer.appendChild(filterRow);
-}
-
-// Remove filter row
-function removeFilter(button) {
-    button.parentElement.remove();
-}
-
-// Save job
 async function saveJob(event) {
     event.preventDefault();
 
     const jobId = document.getElementById('jobId').value;
-    const name = document.getElementById('jobName').value;
-    const emailTo = document.getElementById('emailTo').value;
-    const isActive = document.getElementById('isActive').checked;
-
-    // Collect filters
-    const filterRows = document.querySelectorAll('.filter-row');
-    const filters = Array.from(filterRows).map(row => {
-        const filterType = row.querySelector('.filter-type').value;
-        const key = row.querySelector('.filter-key').value;
-        const value = row.querySelector('.filter-value').value;
-
-        return {
-            filterType,
-            key: key || filterType,
-            value
-        };
-    });
-
     const jobData = {
         id: jobId ? parseInt(jobId) : 0,
-        name,
-        emailTo,
-        isActive,
-        filters
+        name: document.getElementById('jobName').value,
+        emailTo: document.getElementById('emailTo').value,
+        isActive: document.getElementById('isActive').checked,
+        filters: buildFilters()
     };
 
     try {
-        let response;
-        if (jobId) {
-            // Update existing job
-            response = await fetch(`${API_BASE}/monitorjobs/${jobId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(jobData)
-            });
-        } else {
-            // Create new job
-            response = await fetch(`${API_BASE}/monitorjobs`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(jobData)
-            });
+        const url = jobId ? `${API_BASE}/monitorjobs/${jobId}` : `${API_BASE}/monitorjobs`;
+        const method = jobId ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(jobData)
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to save job');
         }
 
-        if (response.ok) {
-            closeJobModal();
-            loadJobs();
-            loadStats();
-            alert(jobId ? 'Job updated successfully!' : 'Job created successfully!');
-        } else {
-            const error = await response.text();
-            alert('Error saving job: ' + error);
-        }
+        closeJobModal();
+        await loadJobs();
     } catch (error) {
+        alert(error.message);
         console.error('Error saving job:', error);
-        alert('Error saving job. Please try again.');
     }
 }
 
-// Toggle job active status
-async function toggleJob(jobId) {
-    try {
-        const response = await fetch(`${API_BASE}/monitorjobs/${jobId}/toggle`, {
-            method: 'POST'
-        });
+function buildFilters() {
+    const filters = [];
 
-        if (response.ok) {
-            loadJobs();
-            loadStats();
-        } else {
-            alert('Error toggling job status');
-        }
+    const query = document.getElementById('searchQuery').value.trim();
+    if (query) {
+        filters.push({ filterType: 'query', key: '', value: query });
+    }
+
+    const l1CategoryId = document.getElementById('l1CategoryId').value;
+    if (l1CategoryId) {
+        filters.push({ filterType: 'l1CategoryId', key: '', value: l1CategoryId });
+    }
+
+    const postcode = document.getElementById('postcode').value.trim();
+    if (postcode) {
+        filters.push({ filterType: 'postcode', key: '', value: postcode });
+    }
+
+    const minPrice = document.getElementById('minPrice').value;
+    const maxPrice = document.getElementById('maxPrice').value;
+    if (minPrice || maxPrice) {
+        filters.push({
+            filterType: 'attributeRange',
+            key: 'PrijsVan',
+            value: `PrijsVan:${minPrice || '0'}|${maxPrice || '999999'}`
+        });
+    }
+
+    const minYear = document.getElementById('minYear').value;
+    const maxYear = document.getElementById('maxYear').value;
+    if (minYear || maxYear) {
+        filters.push({
+            filterType: 'attributeRange',
+            key: 'Bouwjaar',
+            value: `Bouwjaar:${minYear || '1900'}|${maxYear || new Date().getFullYear()}`
+        });
+    }
+
+    return filters;
+}
+
+async function toggleJobStatus(id) {
+    try {
+        const response = await fetch(`${API_BASE}/monitorjobs/${id}/toggle`, { method: 'POST' });
+        if (!response.ok) throw new Error('Failed to toggle job');
+
+        await loadJobs();
     } catch (error) {
+        alert('Failed to update job status');
         console.error('Error toggling job:', error);
-        alert('Error toggling job status');
     }
 }
 
-// Delete job
-async function deleteJob(jobId, jobName) {
-    if (!confirm(`Are you sure you want to delete "${jobName}"? This will also delete all associated logs.`)) {
-        return;
-    }
+async function deleteJob(id) {
+    if (!confirm('Are you sure you want to delete this job?')) return;
 
     try {
-        const response = await fetch(`${API_BASE}/monitorjobs/${jobId}`, {
-            method: 'DELETE'
-        });
+        const response = await fetch(`${API_BASE}/monitorjobs/${id}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Failed to delete job');
 
-        if (response.ok) {
-            loadJobs();
-            loadStats();
-            alert('Job deleted successfully!');
-        } else {
-            alert('Error deleting job');
-        }
+        await loadJobs();
     } catch (error) {
+        alert('Failed to delete job');
         console.error('Error deleting job:', error);
-        alert('Error deleting job');
     }
 }
 
-// Utility functions
-function formatDate(dateString) {
-    if (!dateString) return 'Never';
-    const date = new Date(dateString);
-    return date.toLocaleString();
-}
-
+// Utility Functions
 function escapeHtml(text) {
-    if (!text) return '';
-    const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-    };
-    return text.toString().replace(/[&<>"']/g, m => map[m]);
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
-// Close modal when clicking outside
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diff = now - date;
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+
+    if (hours < 1) {
+        const minutes = Math.floor(diff / (1000 * 60));
+        return `${minutes}m ago`;
+    } else if (hours < 24) {
+        return `${hours}h ago`;
+    } else {
+        const days = Math.floor(hours / 24);
+        return `${days}d ago`;
+    }
+}
+
+function truncate(text, length) {
+    if (text.length <= length) return text;
+    return text.substring(0, length) + '...';
+}
+
+// Close modal on outside click
 window.onclick = function(event) {
     const modal = document.getElementById('jobModal');
     if (event.target === modal) {

@@ -1,0 +1,60 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build and publish
+      run: dotnet publish MarketPlatz-Notification-Helper/MarketPlatz-Notification-Helper.csproj -c Release -o ./publish --self-contained true -r linux-x64
+
+    - name: Stop existing application
+      uses: appleboy/ssh-action@v1.0.3
+      continue-on-error: true
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USERNAME }}
+        password: ${{ secrets.SSH_PASSWORD }}
+        script: |
+          pkill -f MarketPlatz-Notification-Helper || true
+
+    - name: Deploy to server
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USERNAME }}
+        password: ${{ secrets.SSH_PASSWORD }}
+        source: "publish/*"
+        target: "/home/markplatz/"
+        strip_components: 1
+        rm: true
+
+    - name: Set permissions and start application
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USERNAME }}
+        password: ${{ secrets.SSH_PASSWORD }}
+        script: |
+          chmod +x /home/markplatz/MarketPlatz-Notification-Helper
+          cd /home/markplatz
+          nohup ./MarketPlatz-Notification-Helper > app.log 2>&1 &
+          echo "Application started on port 8099"
+          sleep 2
+          ps aux | grep MarketPlatz-Notification-Helper | grep -v grep

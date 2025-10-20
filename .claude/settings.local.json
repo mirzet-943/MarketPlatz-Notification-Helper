@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet build)",
+      "Bash(curl -X POST http://localhost:5000/api/monitorjobs )",
+      "Bash(curl -X PUT http://localhost:5000/api/monitorjobs/2 )",
+      "Bash(dotnet run)",
+      "Bash(lsof:*)",
+      "Bash(kill:*)",
+      "Bash(ps:*)",
+      "Bash(ssh:*)",
+      "Bash(dotnet publish:*)",
+      "Bash(gh auth:*)",
+      "Bash(gh repo create:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

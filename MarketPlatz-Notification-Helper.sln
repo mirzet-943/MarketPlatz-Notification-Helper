@@ -1,0 +1,16 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MarketPlatz-Notification-Helper", "MarketPlatz-Notification-Helper\MarketPlatz-Notification-Helper.csproj", "{DBFA4B52-B990-41D1-A2B2-F46B87EC4118}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DBFA4B52-B990-41D1-A2B2-F46B87EC4118}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DBFA4B52-B990-41D1-A2B2-F46B87EC4118}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DBFA4B52-B990-41D1-A2B2-F46B87EC4118}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DBFA4B52-B990-41D1-A2B2-F46B87EC4118}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

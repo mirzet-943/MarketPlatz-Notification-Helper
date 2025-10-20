@@ -8,7 +8,7 @@ public class MonitorService : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<MonitorService> _logger;
-    private readonly TimeSpan _checkInterval = TimeSpan.FromMinutes(1);
+    private readonly TimeSpan _checkInterval = TimeSpan.FromSeconds(30);
     private readonly TimeSpan _maxListingAge = TimeSpan.FromHours(24); // Only notify about listings from last 24 hours (API already filters to today)
 
     public MonitorService(IServiceProvider serviceProvider, ILogger<MonitorService> logger)

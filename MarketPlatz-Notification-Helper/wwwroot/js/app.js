@@ -7,10 +7,105 @@ let jobs = [];
 let history = [];
 let currentTab = 'jobs';
 
+// Filter Data
+const BRANDS = [
+    { id: 157, label: 'Volkswagen' }, { id: 96, label: 'BMW' }, { id: 130, label: 'Mercedes-Benz' },
+    { id: 140, label: 'Peugeot' }, { id: 112, label: 'Ford' }, { id: 138, label: 'Opel' },
+    { id: 93, label: 'Audi' }, { id: 146, label: 'Renault' }, { id: 155, label: 'Toyota' },
+    { id: 119, label: 'Kia' }, { id: 158, label: 'Volvo' }, { id: 101, label: 'Citroën' },
+    { id: 111, label: 'Fiat' }, { id: 150, label: 'Seat' }, { id: 115, label: 'Hyundai' },
+    { id: 151, label: 'Skoda' }, { id: 133, label: 'Mini' }, { id: 135, label: 'Nissan' },
+    { id: 154, label: 'Suzuki' }, { id: 129, label: 'Mazda' }, { id: 124, label: 'Land Rover' },
+    { id: 144, label: 'Porsche' }, { id: 134, label: 'Mitsubishi' }, { id: 2660, label: 'Dacia' },
+    { id: 92, label: 'Alfa Romeo' }, { id: 118, label: 'Jeep' }, { id: 2830, label: 'Tesla' }
+].sort((a, b) => a.label.localeCompare(b.label));
+
+const FUEL_TYPES = [
+    { id: 473, label: 'Benzine' }, { id: 474, label: 'Diesel' },
+    { id: 11756, label: 'Elektrisch' }, { id: 13838, label: 'Hybride Elektrisch/Benzine' },
+    { id: 13839, label: 'Hybride Elektrisch/Diesel' }, { id: 475, label: 'LPG' },
+    { id: 13840, label: 'CNG (Aardgas)' }, { id: 13841, label: 'Waterstof' }
+];
+
+const BODY_TYPES = [
+    { id: 485, label: 'Cabriolet' }, { id: 486, label: 'Coupé' }, { id: 481, label: 'Hatchback' },
+    { id: 482, label: 'MPV' }, { id: 483, label: 'Sedan' }, { id: 484, label: 'Stationwagon' },
+    { id: 488, label: 'SUV / Terreinwagen' }
+];
+
+const TRANSMISSIONS = [
+    { id: 534, label: 'Automatic' }, { id: 535, label: 'Manual' }
+];
+
+const ADVERTISER_TYPES = [
+    { id: 10898, label: 'Private (Particulier)' }, { id: 10899, label: 'Business (Bedrijf)' }
+];
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
+    initializeFilters();
     checkAuthStatus();
 });
+
+// Initialize Filter Options
+function initializeFilters() {
+    // Brand select
+    const brandSelect = document.getElementById('brandSelect');
+    BRANDS.forEach(brand => {
+        const option = document.createElement('option');
+        option.value = brand.id;
+        option.textContent = brand.label;
+        brandSelect.appendChild(option);
+    });
+
+    // Fuel checkboxes
+    const fuelContainer = document.getElementById('fuelFilters');
+    FUEL_TYPES.forEach(fuel => {
+        const div = document.createElement('div');
+        div.className = 'checkbox-item';
+        div.innerHTML = `
+            <input type="checkbox" id="fuel_${fuel.id}" value="${fuel.id}">
+            <label for="fuel_${fuel.id}">${fuel.label}</label>
+        `;
+        fuelContainer.appendChild(div);
+    });
+
+    // Body type checkboxes
+    const bodyContainer = document.getElementById('bodyFilters');
+    BODY_TYPES.forEach(body => {
+        const div = document.createElement('div');
+        div.className = 'checkbox-item';
+        div.innerHTML = `
+            <input type="checkbox" id="body_${body.id}" value="${body.id}">
+            <label for="body_${body.id}">${body.label}</label>
+        `;
+        bodyContainer.appendChild(div);
+    });
+
+    // Transmission checkboxes
+    const transmissionContainer = document.getElementById('transmissionFilters');
+    TRANSMISSIONS.forEach(trans => {
+        const div = document.createElement('div');
+        div.className = 'checkbox-item';
+        div.innerHTML = `
+            <input type="checkbox" id="trans_${trans.id}" value="${trans.id}">
+            <label for="trans_${trans.id}">${trans.label}</label>
+        `;
+        transmissionContainer.appendChild(div);
+    });
+
+    // Advertiser checkboxes
+    const advertiserContainer = document.getElementById('advertiserFilters');
+    ADVERTISER_TYPES.forEach(adv => {
+        const div = document.createElement('div');
+        div.className = 'checkbox-item';
+        div.innerHTML = `
+            <input type="checkbox" id="adv_${adv.id}" value="${adv.id}">
+            <label for="adv_${adv.id}">${adv.label}</label>
+        `;
+        advertiserContainer.appendChild(div);
+    });
+}
 
 // Auth Functions
 async function checkAuthStatus() {
@@ -235,12 +330,20 @@ function showAddJobModal() {
     document.getElementById('jobForm').reset();
     document.getElementById('jobId').value = '';
     document.getElementById('isActive').checked = true;
+
+    // Reset all checkboxes
+    document.querySelectorAll('#fuelFilters input, #bodyFilters input, #transmissionFilters input, #advertiserFilters input').forEach(cb => cb.checked = false);
+
     document.getElementById('jobModal').classList.add('show');
 }
 
 async function editJob(id) {
     const job = jobs.find(j => j.id === id);
     if (!job) return;
+
+    // Reset form
+    document.getElementById('jobForm').reset();
+    document.querySelectorAll('#fuelFilters input, #bodyFilters input, #transmissionFilters input, #advertiserFilters input').forEach(cb => cb.checked = false);
 
     document.getElementById('modalTitle').textContent = 'Edit Job';
     document.getElementById('jobId').value = job.id;
@@ -251,21 +354,31 @@ async function editJob(id) {
     // Populate filters
     if (job.filters) {
         job.filters.forEach(filter => {
-            if (filter.filterType === 'query') {
+            if (filter.filterType.toLowerCase() === 'query') {
                 document.getElementById('searchQuery').value = filter.value;
-            } else if (filter.filterType === 'l1CategoryId') {
+            } else if (filter.filterType.toLowerCase() === 'l1categoryid') {
                 document.getElementById('l1CategoryId').value = filter.value;
-            } else if (filter.filterType === 'postcode') {
+            } else if (filter.filterType.toLowerCase() === 'l2categoryid') {
+                document.getElementById('brandSelect').value = filter.value;
+            } else if (filter.filterType.toLowerCase() === 'postcode') {
                 document.getElementById('postcode').value = filter.value;
-            } else if (filter.filterType === 'attributeRange') {
+            } else if (filter.filterType.toLowerCase() === 'attributerange') {
                 const [key, range] = filter.value.split(':');
-                if (key === 'PrijsVan') document.getElementById('minPrice').value = range.split('|')[0];
-                if (key === 'PrijsTot') document.getElementById('maxPrice').value = range.split('|')[1];
-                if (key === 'Bouwjaar') {
-                    const [min, max] = range.split('|');
+                const [min, max] = range.split('|');
+                if (key === 'PrijsVan' || key.includes('Prijs')) {
+                    document.getElementById('minPrice').value = min;
+                    document.getElementById('maxPrice').value = max;
+                } else if (key === 'Bouwjaar') {
                     document.getElementById('minYear').value = min;
                     document.getElementById('maxYear').value = max;
+                } else if (key === 'mileage') {
+                    document.getElementById('minMileage').value = min;
+                    document.getElementById('maxMileage').value = max;
                 }
+            } else if (filter.filterType.toLowerCase() === 'attributebyid') {
+                // Check corresponding checkbox
+                const checkbox = document.querySelector(`input[type="checkbox"][value="${filter.value}"]`);
+                if (checkbox) checkbox.checked = true;
             }
         });
     }
@@ -315,21 +428,28 @@ async function saveJob(event) {
 function buildFilters() {
     const filters = [];
 
+    // Search Query
     const query = document.getElementById('searchQuery').value.trim();
     if (query) {
         filters.push({ filterType: 'query', key: '', value: query });
     }
 
-    const l1CategoryId = document.getElementById('l1CategoryId').value;
-    if (l1CategoryId) {
-        filters.push({ filterType: 'l1CategoryId', key: '', value: l1CategoryId });
+    // Brand
+    const brand = document.getElementById('brandSelect').value;
+    if (brand) {
+        filters.push({ filterType: 'l2CategoryId', key: '', value: brand });
     }
 
+    // Category (always Cars)
+    filters.push({ filterType: 'l1CategoryId', key: '', value: '91' });
+
+    // Postcode
     const postcode = document.getElementById('postcode').value.trim();
     if (postcode) {
         filters.push({ filterType: 'postcode', key: '', value: postcode });
     }
 
+    // Price Range
     const minPrice = document.getElementById('minPrice').value;
     const maxPrice = document.getElementById('maxPrice').value;
     if (minPrice || maxPrice) {
@@ -340,6 +460,7 @@ function buildFilters() {
         });
     }
 
+    // Year Range
     const minYear = document.getElementById('minYear').value;
     const maxYear = document.getElementById('maxYear').value;
     if (minYear || maxYear) {
@@ -349,6 +470,41 @@ function buildFilters() {
             value: `Bouwjaar:${minYear || '1900'}|${maxYear || new Date().getFullYear()}`
         });
     }
+
+    // Mileage Range
+    const minMileage = document.getElementById('minMileage').value;
+    const maxMileage = document.getElementById('maxMileage').value;
+    if (minMileage || maxMileage) {
+        filters.push({
+            filterType: 'attributeRange',
+            key: 'mileage',
+            value: `mileage:${minMileage || '0'}|${maxMileage || '999999'}`
+        });
+    }
+
+    // Fuel Types (checkboxes)
+    document.querySelectorAll('#fuelFilters input:checked').forEach(cb => {
+        filters.push({ filterType: 'attributeById', key: '', value: cb.value });
+    });
+
+    // Body Types (checkboxes)
+    document.querySelectorAll('#bodyFilters input:checked').forEach(cb => {
+        filters.push({ filterType: 'attributeById', key: '', value: cb.value });
+    });
+
+    // Transmission (checkboxes)
+    document.querySelectorAll('#transmissionFilters input:checked').forEach(cb => {
+        filters.push({ filterType: 'attributeById', key: '', value: cb.value });
+    });
+
+    // Advertiser Types (checkboxes)
+    document.querySelectorAll('#advertiserFilters input:checked').forEach(cb => {
+        filters.push({ filterType: 'attributeById', key: '', value: cb.value });
+    });
+
+    // Default required filters
+    filters.push({ filterType: 'attributeById', key: 'priceType', value: '10882' }); // Te koop
+    filters.push({ filterType: 'attributeById', key: 'offeredSince', value: '0' });
 
     return filters;
 }

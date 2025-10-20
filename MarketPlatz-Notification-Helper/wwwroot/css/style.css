@@ -416,24 +416,64 @@ body {
     font-size: 14px;
 }
 
-/* Advanced Filters */
-.advanced-filters {
-    margin: 20px 0;
+/* Filter Sections */
+.filter-section {
+    margin: 16px 0;
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 16px;
 }
 
-.advanced-filters summary {
+.filter-section summary {
     cursor: pointer;
     font-weight: 500;
-    margin-bottom: 16px;
+    padding: 12px 16px;
+    background: var(--bg);
+    border-radius: 8px;
+    user-select: none;
+}
+
+.filter-section summary:hover {
+    background: #e2e8f0;
+}
+
+.filter-section[open] summary {
+    border-bottom: 1px solid var(--border);
+    border-radius: 8px 8px 0 0;
+}
+
+.filter-section-content {
+    padding: 16px;
 }
 
 .filters-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 16px;
+}
+
+.checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px;
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px;
+}
+
+.checkbox-item input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+}
+
+.checkbox-item label {
+    margin: 0;
+    font-weight: normal;
+    cursor: pointer;
+    user-select: none;
 }
 
 /* Modal */
@@ -465,7 +505,7 @@ body {
 }
 
 .modal-medium {
-    width: 600px;
+    width: 900px;
 }
 
 .modal-header {

@@ -120,41 +120,101 @@
                     </label>
                 </div>
 
+                <h3 style="margin: 24px 0 12px 0; font-size: 16px;">Basic Filters</h3>
+
                 <div class="form-group">
                     <label>Search Query</label>
                     <input type="text" id="searchQuery" placeholder="e.g., volkswagen golf">
                     <small>Search in title and description</small>
                 </div>
 
-                <details class="advanced-filters">
-                    <summary>Advanced Filters</summary>
-                    <div class="filters-grid">
-                        <div class="form-group">
-                            <label>Category</label>
-                            <select id="l1CategoryId">
-                                <option value="">Any</option>
-                                <option value="91">Cars</option>
-                            </select>
+                <div class="filters-grid">
+                    <div class="form-group">
+                        <label>Min Price (€)</label>
+                        <input type="number" id="minPrice" placeholder="e.g., 5000">
+                    </div>
+                    <div class="form-group">
+                        <label>Max Price (€)</label>
+                        <input type="number" id="maxPrice" placeholder="e.g., 15000">
+                    </div>
+                    <div class="form-group">
+                        <label>Min Year</label>
+                        <input type="number" id="minYear" placeholder="e.g., 2015">
+                    </div>
+                    <div class="form-group">
+                        <label>Max Year</label>
+                        <input type="number" id="maxYear" placeholder="e.g., 2023">
+                    </div>
+                </div>
+
+                <h3 style="margin: 24px 0 12px 0; font-size: 16px;">Advanced Filters</h3>
+
+                <!-- Brand -->
+                <details class="filter-section">
+                    <summary>🚗 Brand</summary>
+                    <div class="filter-section-content">
+                        <select id="brandSelect" class="form-control">
+                            <option value="">Any Brand</option>
+                        </select>
+                    </div>
+                </details>
+
+                <!-- Fuel Type -->
+                <details class="filter-section">
+                    <summary>⛽ Fuel Type</summary>
+                    <div class="filter-section-content">
+                        <div id="fuelFilters" class="checkbox-grid"></div>
+                    </div>
+                </details>
+
+                <!-- Body Type -->
+                <details class="filter-section">
+                    <summary>🚙 Body Type</summary>
+                    <div class="filter-section-content">
+                        <div id="bodyFilters" class="checkbox-grid"></div>
+                    </div>
+                </details>
+
+                <!-- Transmission -->
+                <details class="filter-section">
+                    <summary>⚙️ Transmission</summary>
+                    <div class="filter-section-content">
+                        <div id="transmissionFilters" class="checkbox-grid"></div>
+                    </div>
+                </details>
+
+                <!-- Mileage -->
+                <details class="filter-section">
+                    <summary>📏 Mileage</summary>
+                    <div class="filter-section-content">
+                        <div class="filters-grid">
+                            <div class="form-group">
+                                <label>Min Mileage (km)</label>
+                                <input type="number" id="minMileage" placeholder="e.g., 0">
+                            </div>
+                            <div class="form-group">
+                                <label>Max Mileage (km)</label>
+                                <input type="number" id="maxMileage" placeholder="e.g., 100000">
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label>Min Year</label>
-                            <input type="number" id="minYear" placeholder="e.g., 2015">
-                        </div>
-                        <div class="form-group">
-                            <label>Max Year</label>
-                            <input type="number" id="maxYear" placeholder="e.g., 2023">
-                        </div>
-                        <div class="form-group">
-                            <label>Min Price (€)</label>
-                            <input type="number" id="minPrice" placeholder="e.g., 5000">
-                        </div>
-                        <div class="form-group">
-                            <label>Max Price (€)</label>
-                            <input type="number" id="maxPrice" placeholder="e.g., 15000">
-                        </div>
+                    </div>
+                </details>
+
+                <!-- Advertiser Type -->
+                <details class="filter-section">
+                    <summary>👤 Advertiser Type</summary>
+                    <div class="filter-section-content">
+                        <div id="advertiserFilters" class="checkbox-grid"></div>
+                    </div>
+                </details>
+
+                <!-- Location -->
+                <details class="filter-section">
+                    <summary>📍 Location</summary>
+                    <div class="filter-section-content">
                         <div class="form-group">
                             <label>Postal Code</label>
-                            <input type="text" id="postcode" placeholder="e.g., 1000">
+                            <input type="text" id="postcode" placeholder="e.g., 1012">
                         </div>
                     </div>
                 </details>

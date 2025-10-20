@@ -24,7 +24,7 @@ jobs:
     - name: Build and publish
       run: dotnet publish MarketPlatz-Notification-Helper/MarketPlatz-Notification-Helper.csproj -c Release -o ./publish --self-contained true -r linux-x64
 
-    - name: Stop existing application
+    - name: Stop existing application and backup database
       uses: appleboy/ssh-action@v1.0.3
       continue-on-error: true
       with:
@@ -33,6 +33,13 @@ jobs:
         password: ${{ secrets.SSH_PASSWORD }}
         script: |
           pkill -f MarketPlatz-Notification-Helper || true
+          # Backup database files if they exist
+          cd /home/markplatz
+          if [ -f "marktplaats.db" ]; then
+            cp -p marktplaats.db marktplaats.db.backup
+            cp -p marktplaats.db-shm marktplaats.db-shm.backup 2>/dev/null || true
+            cp -p marktplaats.db-wal marktplaats.db-wal.backup 2>/dev/null || true
+          fi
 
     - name: Deploy to server
       uses: appleboy/scp-action@v0.1.7
@@ -43,17 +50,24 @@ jobs:
         source: "publish/*"
         target: "/home/markplatz/"
         strip_components: 1
-        rm: true
+        overwrite: true
 
-    - name: Set permissions and start application
+    - name: Restore database and start application
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ secrets.SSH_HOST }}
         username: ${{ secrets.SSH_USERNAME }}
         password: ${{ secrets.SSH_PASSWORD }}
         script: |
-          chmod +x /home/markplatz/MarketPlatz-Notification-Helper
           cd /home/markplatz
+          # Restore database backup if it exists
+          if [ -f "marktplaats.db.backup" ]; then
+            mv marktplaats.db.backup marktplaats.db
+            mv marktplaats.db-shm.backup marktplaats.db-shm 2>/dev/null || true
+            mv marktplaats.db-wal.backup marktplaats.db-wal 2>/dev/null || true
+            echo "Database restored from backup"
+          fi
+          chmod +x ./MarketPlatz-Notification-Helper
           nohup ./MarketPlatz-Notification-Helper > app.log 2>&1 &
           echo "Application started on port 8099"
           sleep 2

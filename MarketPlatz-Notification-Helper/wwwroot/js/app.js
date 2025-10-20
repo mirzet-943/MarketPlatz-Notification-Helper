@@ -43,7 +43,6 @@ const ADVERTISER_TYPES = [
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
-    initializeFilters();
     checkAuthStatus();
 });
 
@@ -171,6 +170,7 @@ function showLogin() {
 function showDashboard() {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('dashboard').style.display = 'block';
+    initializeFilters();
 }
 
 // Dashboard Data Functions

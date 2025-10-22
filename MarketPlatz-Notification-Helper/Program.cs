@@ -71,6 +71,37 @@ using (var scope = app.Services.CreateScope())
         CREATE INDEX IF NOT EXISTS IX_ErrorLogs_Timestamp ON ErrorLogs(Timestamp);
     ";
     command.ExecuteNonQuery();
+
+    // Add TelegramChatId column to MonitorJobs if it doesn't exist
+    try
+    {
+        var checkColumnCommand = connection.CreateCommand();
+        checkColumnCommand.CommandText = "PRAGMA table_info(MonitorJobs);";
+        using var reader = checkColumnCommand.ExecuteReader();
+        var hasTelegramChatId = false;
+        while (reader.Read())
+        {
+            if (reader.GetString(1) == "TelegramChatId")
+            {
+                hasTelegramChatId = true;
+                break;
+            }
+        }
+        reader.Close();
+
+        if (!hasTelegramChatId)
+        {
+            var alterCommand = connection.CreateCommand();
+            alterCommand.CommandText = "ALTER TABLE MonitorJobs ADD COLUMN TelegramChatId TEXT;";
+            alterCommand.ExecuteNonQuery();
+            Console.WriteLine("Added TelegramChatId column to MonitorJobs table");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error checking/adding TelegramChatId column: {ex.Message}");
+    }
+
     connection.Close();
 }
 

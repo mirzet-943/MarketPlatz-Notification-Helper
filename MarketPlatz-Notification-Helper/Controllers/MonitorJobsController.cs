@@ -35,6 +35,7 @@ public class MonitorJobsController : ControllerBase
             Id = job.Id,
             Name = job.Name,
             EmailTo = job.EmailTo,
+            TelegramChatId = job.TelegramChatId,
             IsActive = job.IsActive,
             CreatedAt = job.CreatedAt,
             LastRunAt = job.LastRunAt,
@@ -67,6 +68,7 @@ public class MonitorJobsController : ControllerBase
             Id = job.Id,
             Name = job.Name,
             EmailTo = job.EmailTo,
+            TelegramChatId = job.TelegramChatId,
             IsActive = job.IsActive,
             CreatedAt = job.CreatedAt,
             LastRunAt = job.LastRunAt,
@@ -97,6 +99,7 @@ public class MonitorJobsController : ControllerBase
         {
             Name = jobDto.Name,
             EmailTo = jobDto.EmailTo,
+            TelegramChatId = jobDto.TelegramChatId,
             IsActive = jobDto.IsActive,
             CreatedAt = DateTime.UtcNow,
             Filters = jobDto.Filters?.Select(f => new JobFilter
@@ -118,6 +121,7 @@ public class MonitorJobsController : ControllerBase
             Id = job.Id,
             Name = job.Name,
             EmailTo = job.EmailTo,
+            TelegramChatId = job.TelegramChatId,
             IsActive = job.IsActive,
             CreatedAt = job.CreatedAt,
             LastRunAt = job.LastRunAt,
@@ -149,6 +153,7 @@ public class MonitorJobsController : ControllerBase
 
         existingJob.Name = jobDto.Name;
         existingJob.EmailTo = jobDto.EmailTo;
+        existingJob.TelegramChatId = jobDto.TelegramChatId;
         existingJob.IsActive = jobDto.IsActive;
 
         // Update filters
@@ -171,6 +176,7 @@ public class MonitorJobsController : ControllerBase
             Id = existingJob.Id,
             Name = existingJob.Name,
             EmailTo = existingJob.EmailTo,
+            TelegramChatId = existingJob.TelegramChatId,
             IsActive = existingJob.IsActive,
             CreatedAt = existingJob.CreatedAt,
             LastRunAt = existingJob.LastRunAt,
@@ -224,6 +230,7 @@ public class MonitorJobsController : ControllerBase
             Id = job.Id,
             Name = job.Name,
             EmailTo = job.EmailTo,
+            TelegramChatId = job.TelegramChatId,
             IsActive = job.IsActive,
             CreatedAt = job.CreatedAt,
             LastRunAt = job.LastRunAt,

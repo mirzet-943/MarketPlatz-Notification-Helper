@@ -42,6 +42,7 @@ public class MonitorService : BackgroundService
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var apiClient = scope.ServiceProvider.GetRequiredService<MarktplaatsApiClient>();
         var emailService = scope.ServiceProvider.GetRequiredService<EmailService>();
+        var telegramService = scope.ServiceProvider.GetRequiredService<TelegramService>();
 
         var activeJobs = await dbContext.MonitorJobs
             .Include(j => j.Filters)
@@ -54,7 +55,7 @@ public class MonitorService : BackgroundService
         {
             try
             {
-                await CheckJobAsync(job, dbContext, apiClient, emailService, cancellationToken);
+                await CheckJobAsync(job, dbContext, apiClient, emailService, telegramService, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -69,6 +70,7 @@ public class MonitorService : BackgroundService
         AppDbContext dbContext,
         MarktplaatsApiClient apiClient,
         EmailService emailService,
+        TelegramService telegramService,
         CancellationToken cancellationToken)
     {
         _logger.LogInformation("Checking job {JobId} - {JobName}", job.Id, job.Name);
@@ -120,10 +122,13 @@ public class MonitorService : BackgroundService
                 // Send email notification
                 await emailService.SendNewListingNotificationAsync(job.EmailTo, job, newListings);
                 _logger.LogInformation("Email notification sent to {Email}", job.EmailTo);
+
+                // Send Telegram notification
+                await telegramService.SendNewListingNotificationAsync(job.TelegramChatId, job, newListings);
             }
             else
             {
-                _logger.LogInformation("First run with {Count} listings - skipping email, will notify on next run", newListings.Count);
+                _logger.LogInformation("First run with {Count} listings - skipping notifications, will notify on next run", newListings.Count);
             }
 
             // Log the new listings

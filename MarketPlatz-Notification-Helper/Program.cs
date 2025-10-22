@@ -39,6 +39,7 @@ builder.Services.AddHttpClient<MarktplaatsApiClient>();
 
 // Add Services
 builder.Services.AddScoped<EmailService>();
+builder.Services.AddScoped<TelegramService>();
 builder.Services.AddScoped<MarktplaatsApiClient>();
 
 // Add Background Service
